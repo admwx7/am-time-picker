@@ -1,0 +1,36 @@
+{
+  "name": "am-time-picker",
+  "version": "0.0.1",
+  "description": "Time picker web component, built using lit-element",
+  "main": "am-time-picker.js",
+  "dependencies": {
+    "@polymer/lit-element": "~0.6.3"
+  },
+  "devDependencies": {
+    "@webcomponents/webcomponentsjs": "^2.2.0",
+    "concurrently": "^4.1.0",
+    "typescript": "^3.1.6"
+  },
+  "scripts": {
+    "start": "concurrently --kill-others \"npm run serve\" \"npm run build:watch\"",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "polymer serve --npm",
+    "test": "asdf"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/admwx7/am-time-picker.git"
+  },
+  "keywords": [
+    "web-components",
+    "time",
+    "picker"
+  ],
+  "author": "Austin Murdock <austin.d.murdock@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/admwx7/am-time-picker/issues"
+  },
+  "homepage": "https://github.com/admwx7/am-time-picker"
+}
