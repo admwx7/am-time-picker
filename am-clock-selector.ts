@@ -58,9 +58,12 @@ export class AmClockSelector extends LitElement {
           color: rgb(255, 255, 255); 
           mix-blend-mode: difference;
           font-size: 10pt;
+          top: 50%;
+          left: 50%;
         }
         .clock-marker {
-          transform: translate(-50%, -50%);
+          top: 50%;
+          left: 50%;
           position: absolute;
           background-color: blue;
           height: 26px;
@@ -70,7 +73,7 @@ export class AmClockSelector extends LitElement {
       </style>
       <div class="clock-face" @click="${this.__positionMarker.bind(this)}">
         ${this.__getMarker(this.position)}
-        ${this.__getNumbers(this.view).map(this.__displayNumbers)}
+        ${this.__getNumbers(this.view).map(this.__displayNumbers.bind(this))}
       </div>
     `;
   }
@@ -80,19 +83,29 @@ export class AmClockSelector extends LitElement {
    */
   __getMarker(position: Coordinate) {
     // TODO: switch to using transform: translate for positioning
-    return (position && position.x && position.y) ? html`
-      <span class="clock-marker" style = "left: ${position.x}px; top: ${position.y}px;"></span>
+    return position ? html`
+      <span class="clock-marker" style="transform: translate(${position.x - 13}px, ${position.y - 13}px);"></span>
     ` : '';
+  }
+  /**
+   * Converts a radius and angle into x/y coordinates
+   * @param radius 
+   * @param angle 
+   */
+  __getCoordinates(radius, angle) {
+    return {
+      x: radius * Math.cos(angle),
+      y: radius * Math.sin(angle),
+    }
   }
   /**
    * Positions the marker on the clock face based on the click event location
    * @param event
    */
   __positionMarker(event) {
-    this.position = {
-      x: event.offsetX,
-      y: event.offsetY
-    };
+    const opposite = event.offsetY - (150 / 2);
+    const adjacent = event.offsetX - (150 / 2);
+    this.position = this.__getCoordinates((150 - 30) / 2, Math.atan2(opposite, adjacent));
   }
   /**
    * Creates a template partial to render one of the numbers on the clock face
@@ -101,14 +114,11 @@ export class AmClockSelector extends LitElement {
    * @param numbers 
    */
   __displayNumbers(number: string, index: number, numbers: Array<string>) {
-    const radius = (150 - 30) / 2;
-    const angle = 2 * Math.PI * (numbers.length - index) / numbers.length;
-    const x = radius * Math.cos(angle);
-    const y = radius * Math.sin(angle);
-    // TODO: switch to using transform: translate for positioning
+    const position = this.__getCoordinates((150 - 30) / 2, (2 * Math.PI * index / numbers.length) - (Math.PI / 2));
+    // TODO: switch static subtractions to dynamic based on actual element size
     // TODO: move updates of styles into the style block?
     return html`
-      <div class="clock-number" style="top: calc(50% + ${-x}px); left: calc(50% + ${-y}px)">${number}</div>
+      <div class="clock-number" style="transform: translate(${position.x - 8}px, ${position.y - 8}px);">${number}</div>
     `;
   }
   /**
