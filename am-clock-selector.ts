@@ -21,14 +21,20 @@ export interface ClockFace {
   visualStep: number;
   padValue: ((value: number) => (number | string)) | null;
 }
-interface Coordinate {
-  x: number;
-  y: number;
-}
 export enum ClockFaceView {
   Hours = 'hours',
   Minutes = 'minutes',
   Seconds = 'seconds',
+}
+export interface ClockNumber {
+  angle: number;
+  position: Coordinate;
+  value: number | string;
+  visible: boolean;
+}
+export interface Coordinate {
+  x: number;
+  y: number;
 }
 export class AmClockSelector extends LitElement {
   private _view: ClockFaceView;
@@ -168,13 +174,6 @@ export class AmClockSelector extends LitElement {
     }
     return numbers;
   }
-}
-
-interface ClockNumber {
-  angle: number;
-  position: Coordinate;
-  value: number | string;
-  visible: boolean;
 }
 
 customElements.define('am-clock-selector', AmClockSelector);
