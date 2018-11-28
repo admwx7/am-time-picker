@@ -1,5 +1,26 @@
 import { LitElement, html, property } from '@polymer/lit-element';
 
+// TODO:
+// * Add selection marker snapping based on steps
+// * Add swipe support
+// * Add bar between center and selection marker
+// * Add dot in center of selection marker when not on a number
+// * Using some magic numbers (width based mostly) switch to dynamic
+// * Add selection logic
+// * Bind the different values together in a shared interface for "time to number mapping"
+// * Add animations
+// * Set default selection based on view
+// * Add a butt load of css variables
+// * Add browser variants on styles (Chrome, FF, IE11, Edge, Safari)
+// * Test me!
+
+export interface ClockFace {
+  selectionStep: number;
+  startValue: number;
+  stopValue: number;
+  visualStep: number;
+  padValue: ((value: number) => (number | string)) | null;
+}
 interface Coordinate {
   x: number;
   y: number;
@@ -10,30 +31,53 @@ export enum ClockFaceView {
   Seconds = 'seconds',
 }
 export class AmClockSelector extends LitElement {
-  @property() public animated : Boolean = false;
-  private _view : ClockFaceView = ClockFaceView.Hours;
+  private _view: ClockFaceView;
   @property()
   set view(value) {
     this._view = value;
-    this.numbers = this.__getNumbers(value);
+    this.numbers = this.__getNumbers(this.views[value]);
   }
   get view(): ClockFaceView {
     return this._view;
   }
-  @property() public count: number = 0;
-  @property() public position: Coordinate;
-  @property() public selected: number = 0;
-  @property() public step : number = 1;
-  @property() public useZero : Boolean = false;
-  @property() public zeroPad : Boolean = false;
-  @property() public numbers : Array<string> = [];
+  @property() public views: Record<ClockFaceView, ClockFace> = {
+    [ClockFaceView.Hours]: {
+      selectionStep: 1,
+      visualStep: 1,
+      startValue: 1,
+      stopValue: 12,
+      padValue: null,
+    },
+    [ClockFaceView.Minutes]: {
+      selectionStep: 1,
+      visualStep: 5,
+      startValue: 0,
+      stopValue: 59,
+      padValue: (value: number) => {
+        return (new String(value)).padStart(2, '0');
+      },
+    },
+    [ClockFaceView.Seconds]: {
+      selectionStep: 1,
+      visualStep: 5,
+      startValue: 0,
+      stopValue: 59,
+      padValue: (value: number) => {
+        return (new String(value)).padStart(2, '0');
+      },
+    },
+  };
 
+  @property() private numbers: Array<ClockNumber> = [];
+  @property() private position: Coordinate = { x: 0, y: 0 };
+
+  constructor() {
+    super();
+    this.view = ClockFaceView.Hours;
+  }
   render() {
     return html`
       <style>
-        :host {
-          position: relative;
-        }
         .clock-face {
           position: relative;
           width: var(--clock-size, 150px);
@@ -52,47 +96,45 @@ export class AmClockSelector extends LitElement {
           bottom: 0;
           left: 0;
         }
-        .clock-number {
+        .clock-number, .clock-marker {
           position: absolute;
-          transform: translate(-50%, -50%);
+          top: 50%;
+          left: 50%;
+        }
+        .clock-number {
           color: rgb(255, 255, 255); 
           mix-blend-mode: difference;
           font-size: 10pt;
-          top: 50%;
-          left: 50%;
+        }
+        ${
+          this.numbers.filter(({ visible }) => { return visible; }).map(({ position }, index) => {
+            return html`.clock-number.position-${index} { transform: translate(${(position as Coordinate).x - 8}px, ${(position as Coordinate).y - 8}px); }`;
+          })
         }
         .clock-marker {
-          top: 50%;
-          left: 50%;
-          position: absolute;
           background-color: blue;
+          border-radius: 100%;
           height: 26px;
           width: 26px;
-          border-radius: 100%;
+          transform: translate(${this.position.x - 13}px, ${this.position.y - 13}px);
         }
       </style>
       <div class="clock-face" @click="${this.__positionMarker.bind(this)}">
-        ${this.__getMarker(this.position)}
-        ${this.__getNumbers(this.view).map(this.__displayNumbers.bind(this))}
+        <span class="clock-marker"></span>
+        ${
+          this.numbers.filter(({ visible }) => { return visible; }).map(({ value }, index) => {
+            return html`<div class="clock-number position-${index}">${value}</div>`;
+          })
+        }
       </div>
     `;
-  }
-  /**
-   * Generates a template partial for the marker to be placed on the clock face
-   * @param position 
-   */
-  __getMarker(position: Coordinate) {
-    // TODO: switch to using transform: translate for positioning
-    return position ? html`
-      <span class="clock-marker" style="transform: translate(${position.x - 13}px, ${position.y - 13}px);"></span>
-    ` : '';
   }
   /**
    * Converts a radius and angle into x/y coordinates
    * @param radius 
    * @param angle 
    */
-  __getCoordinates(radius, angle) {
+  __getCoordinates(radius: number, angle: number) {
     return {
       x: radius * Math.cos(angle),
       y: radius * Math.sin(angle),
@@ -108,47 +150,31 @@ export class AmClockSelector extends LitElement {
     this.position = this.__getCoordinates((150 - 30) / 2, Math.atan2(opposite, adjacent));
   }
   /**
-   * Creates a template partial to render one of the numbers on the clock face
-   * @param number 
-   * @param index 
-   * @param numbers 
-   */
-  __displayNumbers(number: string, index: number, numbers: Array<string>) {
-    const position = this.__getCoordinates((150 - 30) / 2, (2 * Math.PI * index / numbers.length) - (Math.PI / 2));
-    // TODO: switch static subtractions to dynamic based on actual element size
-    // TODO: move updates of styles into the style block?
-    return html`
-      <div class="clock-number" style="transform: translate(${position.x - 8}px, ${position.y - 8}px);">${number}</div>
-    `;
-  }
-  /**
    * Creates an array of all of the clock face number values to display
    * @param view 
    */
-  __getNumbers(view: string): Array<string> {
-    const numbers: Array<string> = [];
-    let step;
-    let start;
-    let maxNumber;
-    switch (view) {
-      case ClockFaceView.Hours:
-        maxNumber = 12;
-        step = 1;
-        start = 1
-        break;
-      case ClockFaceView.Minutes:
-      case ClockFaceView.Seconds:
-        maxNumber = 55;
-        step = 5;
-        start = 0;
-        break;
-    }
-    while(start <= maxNumber) {
-      numbers.push(('0' + start).slice(-2));
-      start += step;
+  __getNumbers({ padValue, selectionStep, startValue, stopValue, visualStep }: ClockFace): Array<ClockNumber> {
+    const numbers: Array<ClockNumber> = [];
+    let value = startValue;
+    while (value <= stopValue) {
+      const angle = (2 * Math.PI * value / (stopValue - startValue + 1)) - Math.PI / 2;
+      numbers.push({
+        angle,
+        position: this.__getCoordinates((150 - 30) / 2, angle),
+        value: padValue ? padValue(value) : value,
+        visible: (value % visualStep) === 0,
+      });
+      value += selectionStep;
     }
     return numbers;
   }
+}
+
+interface ClockNumber {
+  angle: number;
+  position: Coordinate;
+  value: number | string;
+  visible: boolean;
 }
 
 customElements.define('am-clock-selector', AmClockSelector);
