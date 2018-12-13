@@ -15,7 +15,7 @@
     "start": "concurrently --kill-others \"npm run serve\" \"npm run build:watch\"",
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "serve": "polymer serve --npm",
+    "serve": "polymer serve --npm --port 8100 --hostname 0.0.0.0",
     "test": "asdf"
   },
   "repository": {
